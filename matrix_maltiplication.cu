@@ -28,6 +28,7 @@ __global__ void multMatrix(const float *a, const float *b, float *c)
 	v = 0.;
 	for (k = 0; k < N; k++){
 		v += a[i*N + k] * b[k*N + j];
+		__syncthreads();
 	}
 
 	c[i*N + j] = v;
@@ -45,7 +46,7 @@ int main(void)
 	dim3 grid;
 	dim3 block;
 	int i, j, k;
-	unsigned int begin, end;
+	unsigned int begin, end, begin2, end2;
 
 	srand(time(NULL));
 
@@ -70,10 +71,10 @@ int main(void)
 	
 	begin = clock();
 	multMatrix << <grid, block >> >(a_d, b_d, c_d);
-	
+	end = clock();
 
 	cudaMemcpy(c, c_d, N*N*sizeof(float), cudaMemcpyDeviceToHost);
-
+	begin2 = clock();
 	for (i = 0; i < N; i++){
 		for (j = 0; j < N; j++){
 			float v;
@@ -88,11 +89,17 @@ int main(void)
 		}
 	}
 loop_end:
-	end = clock();
-	for (i = 0; i < N*N; i++){
-		printf("c[%d] = %.f \n", i, c[i]);
-	}
-	printf("計測時間は%dです", end - begin);
+	end2 = clock();
+	
+	//for (i = 0; i < N*N; i++){
+	//	printf("c[%d] = %.f \n", i, c[i]);
+	//}
+	printf("BLOCK_SIZE:%d\n", BLOCK_SIZE);
+	printf("Number of block in grid：%d\n", (N / BLOCK_SIZE)* (N / BLOCK_SIZE));
+	printf("Number of thread in block：%d\n", BLOCK_SIZE * BLOCK_SIZE);
+	printf("Total Number of thread: %d\n", (BLOCK_SIZE*BLOCK_SIZE)*((N / BLOCK_SIZE)* (N / BLOCK_SIZE)));
+	printf("CPU計算時間：%d(ms)\n", end2 - begin2);
+	printf("GPU計算時間：%d(ms)", end - begin);
 
 	cudaFreeHost(a);
 	cudaFreeHost(b);
